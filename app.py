@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import os
 import whisper
 from PyPDF2 import PdfReader
+import time
 import openai
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.embeddings import OpenAIEmbeddings, HuggingFaceInstructEmbeddings
@@ -16,7 +17,6 @@ from langchain.llms import OpenAI
 from langchain.chains import RetrievalQA
 from langchain.document_loaders import TextLoader
 from langchain.document_loaders import DirectoryLoader
-import shutil
 
 model = whisper.load_model("base")
 
@@ -73,12 +73,15 @@ def get_completion(prompt, model= "gpt-3.5-turbo"):
         messages=messages,
         temperature=0, 
     )
-    return response.choices[0].message["content"]
+    return response
 
 def speech_to_text(audio):
     if audio is not None:
         result = openai.Audio.transcribe("whisper-1", audio, verbose=True, api_key=os.getenv("OPENAI_API_KEY"))
         return result
+
+def com(prompt):
+    return get_completion(prompt, model= "gpt-3.5-turbo")
 
 
 def main():
@@ -122,11 +125,11 @@ def main():
         st.header("Retrival augmented chatbot - referencing the data uploaded:")
 
         # Initialize chat history
-        if "messages" not in st.session_state:
-            st.session_state.messages = []
+        if "messages" not in st.session_state1:
+            st.session_state.messages1 = []
 
         # Display chat messages from history on app rerun
-        for message in st.session_state.messages:
+        for message in st.session_state.messages1:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
 
@@ -145,7 +148,9 @@ def main():
             st.session_state.messages.append({"role": "assistant", "content": response['result']})
 
     else:
-        st.header("Normal chatbot")
+        st.header("normal")
+
+        # Initialize chat history
         if "messages" not in st.session_state:
             st.session_state.messages = []
 
@@ -156,20 +161,46 @@ def main():
 
         # React to user input
         if prompt := st.chat_input("What is up?"):
-            print(prompt)
             # Display user message in chat message container
             st.chat_message("user").markdown(prompt)
             # Add user message to chat history
             st.session_state.messages.append({"role": "user", "content": prompt})
 
-            response = get_completion(prompt, model= "gpt-3.5-turbo")
-            print(response)
-            
+            response = com(prompt)
+            # Display assistant response in chat message container
             with st.chat_message("assistant"):
-                print('here')
-                st.markdown(response)
+                st.markdown(str(response.choices[0].message["content"]))
             # Add assistant response to chat history
-            st.session_state.messages.append({"role": "assistant", "content": response})
+            st.session_state.messages.append({"role": "assistant", "content": response.choices[0].message["content"]})
+        # st.header("Normal chatbot")
+        # if "messages" not in st.session_state:
+        #     st.session_state.messages = []
+        # print('Session state', st.session_state.messages)
+        # # Display chat messages from history on app rerun
+        # for message in st.session_state.messages:
+        #     with st.chat_message(message["role"]):
+        #         st.markdown(message["content"])
+
+        # # React to user input
+        # if prompt := st.chat_input("What is up?"):
+        #     print(prompt)
+        #     # Display user message in chat message container
+        #     st.chat_message("user").markdown(prompt)
+        #     # Add user message to chat history
+        #     st.session_state.messages.append({"role": "user", "content": prompt})
+        #     # print('hh')
+        #     # prin
+        #     # response = 'hllo'
+        #     response1 = com(prompt)
+        #     print(response1)
+        #     st.session_state.messages.append({"role": "assistant", "content": response1})
+
+
+        #     with st.chat_message("assistant"):
+        #         print(st.session_state.messages)
+        #         st.markdown(response1)
+            # Add assistant response to chat history
+
 
 
 
