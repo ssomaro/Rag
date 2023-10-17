@@ -18,7 +18,7 @@ from langchain.chains import RetrievalQA
 from langchain.document_loaders import TextLoader
 from langchain.document_loaders import DirectoryLoader
 
-model = whisper.load_model("base")
+# model = whisper.load_model("base")
 
 persist_directory = 'db'
 
