@@ -14,15 +14,15 @@ from langchain.document_loaders import DirectoryLoader
 import time
 persist_directory = 'db'
 vectordb = None
-vectorstore = None
+
 
 from dotenv import load_dotenv, find_dotenv
 _ = load_dotenv(find_dotenv()) # read local .env file
 load_dotenv()
-openai.api_key = os.environ['OPENAI_API_KEY']
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 def get_text_chunks(text):
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50,separators=['\n', ' ', '.', ',', ';', ':', '?', '!'])
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1500, chunk_overlap=300,separators=['\n', ' ', '.', ',', ';', ':', '?', '!'])
     chunks = text_splitter.split_text(text)
     return chunks
 
@@ -30,24 +30,25 @@ def vectordb1(text_chunks):
     embedding = OpenAIEmbeddings()
     vectordb = None
     # vectordb.delete_collection()
-    if vectordb is not None:
-        vectordb.close()  # Close the existing database
-        vectordb = None
-        vectordb.delete_collection()
-        vectordb.persist()
+    # os.remove("db/chroma.sqlite3")
+    # if vectordb is not None:
+    #     vectordb.close()  # Close the existing database
+    #     vectordb = None
+    #     vectordb.delete_collection()
+    #     vectordb.persist()
     vectordb = Chroma.from_texts(texts=text_chunks,
-                                 embedding=embedding,
-                                 persist_directory=persist_directory)
+                                 embedding=embedding,)
+                                #  persist_directory=persist_directory)
     return vectordb
 
 
 
 def inference(query, vectordb):
-    retriever = vectordb.as_retriever(search_kwargs={"k": 2})
-    qa_chain = RetrievalQA.from_chain_type(llm=OpenAI(),
-                                           chain_type="stuff",
+    retriever = vectordb.as_retriever(search_kwargs={"k": 3})
+    qa_chain = RetrievalQA.from_chain_type(llm=OpenAI(max_tokens= 2500 ),
+                                           chain_type="stuff", 
                                            retriever=retriever,
-                                           return_source_documents=True,)
+                                           return_source_documents=True, )
     querys = query
     llm_response = qa_chain(querys)
     return llm_response
@@ -69,7 +70,7 @@ def main():
     load_dotenv()
     st.set_page_config(page_title="Augmented RAG", page_icon=":hehe:", layout="wide", initial_sidebar_state="expanded",)
     audio_uploaded = False
-    re = get_compl('hii')
+    
     
     with st.sidebar:
         st.header("Upload your Audio or Documents here:")
@@ -77,15 +78,16 @@ def main():
         pdf_doc = st.file_uploader("Upload your document here:", accept_multiple_files=True)
 
         # If an audio file is uploaded, set the flag to True
-        if audio is not None:
+        if (audio or pdf_doc)is not None:
             audio_uploaded = True
 
         # Use the flag to conditionally activate the chat
         if audio_uploaded:
             if st.button("Submit"):
                 with st.spinner("Processing..."):
-                    
-                    raw_text1 = str(speech_to_text(audio)['text'])
+                    raw_text1 = ""
+                    if audio is not None:
+                        raw_text1 = str(speech_to_text(audio)['text'])
                     raw_text = ""
                     if pdf_doc is not None:
                         for pdf in pdf_doc:
@@ -98,6 +100,8 @@ def main():
                     
                     chunks1 = get_text_chunks(raw_text2)
                     st.session_state.vectorstore = vectordb1(chunks1)
+                    success_message = st.empty()
+                    success_message.success("Data processed!")
         else:
             st.write("Please upload an audio file to activate the chat.")
 
@@ -115,21 +119,27 @@ def main():
     # React to user input
     if prompt := st.chat_input("What is up?"):
         # Display user message in chat message container
+
         st.chat_message("user").markdown(prompt)
         # Add user message to chat history
         st.session_state.messages.append({"role": "user", "content": prompt})
+        
         if audio_uploaded:
-            response = inference(prompt, st.session_state.vectorstore)['result']
+            op = inference(prompt, st.session_state.vectorstore)
+            response = op['result']
+            source = op['source_documents']
         else:
             response = get_compl(prompt)
         # response = inference(prompt, st.session_state.vectorstore)['result']
         # Display assistant response in chat message container
         #add time delay
-        time.sleep(2)
+        
         st.session_state.messages.append({"role": "assistant", "content": response})
         with st.chat_message("assistant"):
 
-            st.markdown(f'd{response}')
+            st.markdown(f'{response}')
+            st.markdown(f'{source}')
+            
         # Add assistant response to chat history
         
 

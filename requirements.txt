@@ -4,5 +4,7 @@ numpy
 python-dotenv
 whisper
 PyPDF2
+tiktoken
 openai
 langchain
+chromadb
